@@ -12,6 +12,6 @@ Future<Feedback> query({String endpoint, String q}) async {
       return PositiveFeedback();
     }
   } catch (e) {
-    return QueryError();
+    return QueryError(msg: e.toString());
   }
 }

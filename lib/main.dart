@@ -110,6 +110,7 @@ class _HomePageState extends State<HomePage> {
                           : null,
                       errorStyle: Theme.of(context).textTheme.caption.copyWith(
                             color: Colors.red,
+                            fontSize: 20,
                           ),
                       hintText: widget._inputHint,
                       hintStyle: Theme.of(context)
@@ -133,6 +134,7 @@ class _HomePageState extends State<HomePage> {
                         _feedback?.message ?? "",
                         style: Theme.of(context).textTheme.caption.copyWith(
                               color: Colors.lightGreen,
+                              fontSize: 20,
                             ),
                       ),
                     ),
@@ -176,6 +178,9 @@ class _HomePageState extends State<HomePage> {
                         widget._submitLabel,
                         style: GoogleFonts.getFont('Roboto'),
                       ),
+                    ),
+                    const SizedBox(
+                      width: 10,
                     ),
                     FlatButton(
                       onPressed: () {
