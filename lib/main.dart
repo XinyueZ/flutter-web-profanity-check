@@ -4,6 +4,7 @@ import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
 import 'package:flutter_web_profanity_check/query.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(ProfanityCheckApp());
@@ -21,6 +22,7 @@ class ProfanityCheckApp extends StatelessWidget {
         inputHint: kInputHint,
         submitLabel: kSubmitLabel,
         clearLabel: kClear,
+        sourceCodeLocation: kSourceCodeLocation,
       ),
     );
   }
@@ -33,22 +35,26 @@ class HomePage extends StatefulWidget {
     @required String inputHint,
     @required String submitLabel,
     @required String clearLabel,
+    @required String sourceCodeLocation,
   })  : assert(title is String),
         assert(homeLogo is String),
         assert(inputHint is String),
         assert(submitLabel is String),
         assert(clearLabel is String),
+        assert(sourceCodeLocation is String),
         _title = title,
         _homeLogo = homeLogo,
         _inputHint = inputHint,
         _submitLabel = submitLabel,
-        _clearLabel = clearLabel;
+        _clearLabel = clearLabel,
+        _sourceCodeLocation = sourceCodeLocation;
 
   final String _title;
   final String _homeLogo;
   final String _inputHint;
   final String _submitLabel;
   final String _clearLabel;
+  final String _sourceCodeLocation;
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -71,12 +77,33 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _launchInBrowser(String url) async {
+    if (await canLaunch(url)) {
+      await launch(
+        url,
+        forceSafariVC: false,
+        forceWebView: false,
+        headers: <String, String>{'my_header_key': 'my_header_value'},
+      );
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 15.0,
+        actions: <Widget>[
+          FlatButton(
+            child: Image.asset("assets/images/github.png"),
+            onPressed: () async {
+              _launchInBrowser(widget._sourceCodeLocation);
+            },
+          )
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -110,7 +137,7 @@ class _HomePageState extends State<HomePage> {
                           : null,
                       errorStyle: Theme.of(context).textTheme.caption.copyWith(
                             color: Colors.red,
-                            fontSize: 20,
+                            fontSize: 15,
                           ),
                       hintText: widget._inputHint,
                       hintStyle: Theme.of(context)
@@ -120,8 +147,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   margin: const EdgeInsets.only(
-                    left: 20,
-                    right: 20,
+                    left: 25,
+                    right: 25,
                   ),
                 ),
                 Row(
@@ -134,7 +161,7 @@ class _HomePageState extends State<HomePage> {
                         _feedback?.message ?? "",
                         style: Theme.of(context).textTheme.caption.copyWith(
                               color: Colors.lightGreen,
-                              fontSize: 20,
+                              fontSize: 15,
                             ),
                       ),
                     ),

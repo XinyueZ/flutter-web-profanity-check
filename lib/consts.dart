@@ -7,3 +7,5 @@ const String kPositiveInputFeedback = "No problem with input.";
 const String kNegativeInputFeedback = "Input contains indecent words!";
 const String kQueryError = "Something went wrong, try again please!";
 const String kClear = "Clear";
+const String kSourceCodeLocation =
+    "https://github.com/XinyueZ/flutter-web-profanity-check";
