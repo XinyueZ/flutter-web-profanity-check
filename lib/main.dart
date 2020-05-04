@@ -120,8 +120,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   margin: const EdgeInsets.only(
-                    left: 100,
-                    right: 100,
+                    left: 20,
+                    right: 20,
                   ),
                 ),
                 Row(
