@@ -3,9 +3,10 @@ import 'package:http/http.dart' as web;
 
 Future<Feedback> query({String endpoint, String q}) async {
   try {
-    final String url = "$endpoint$q";
-    final dynamic response = await web.read(url);
-    final String responseText = response.toString();
+    final String encodedQ = Uri.encodeQueryComponent(q);
+    final String url = "$endpoint$encodedQ";
+    final dynamic response = await web.get(url);
+    final String responseText = response.body.toString();
     if (responseText == "true") {
       return NegativeFeedback();
     } else {

@@ -186,21 +186,23 @@ class _HomePageState extends State<HomePage> {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     RaisedButton(
-                      onPressed: () async {
-                        _setLoading(true);
-                        final String input =
-                            _editingController.text?.trim() ?? "";
-                        if (input.isNotEmpty) {
-                          final fbs.Feedback feedback = await query(
-                            endpoint: kEndpoint,
-                            q: input,
-                          );
-                          _setFeedback(feedback);
-                        } else {
-                          _setFeedback(null);
-                        }
-                        _setLoading(false);
-                      },
+                      onPressed: _loading == true
+                          ? null
+                          : () async {
+                              _setLoading(true);
+                              final String input =
+                                  _editingController.text?.trim() ?? "";
+                              if (input.isNotEmpty) {
+                                final fbs.Feedback feedback = await query(
+                                  endpoint: kEndpoint,
+                                  q: input,
+                                );
+                                _setFeedback(feedback);
+                              } else {
+                                _setFeedback(null);
+                              }
+                              _setLoading(false);
+                            },
                       child: Text(
                         widget._submitLabel,
                         style: GoogleFonts.getFont('Roboto'),
@@ -210,11 +212,13 @@ class _HomePageState extends State<HomePage> {
                       width: 10,
                     ),
                     FlatButton(
-                      onPressed: () {
-                        _editingController.text = "";
-                        _setFeedback(null);
-                        _setLoading(false);
-                      },
+                      onPressed: _loading == true
+                          ? null
+                          : () {
+                              _editingController.text = "";
+                              _setFeedback(null);
+                              _setLoading(false);
+                            },
                       child: Text(
                         widget._clearLabel,
                         style: GoogleFonts.getFont('Roboto'),
