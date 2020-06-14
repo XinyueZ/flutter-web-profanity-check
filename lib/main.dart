@@ -62,12 +62,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final TextEditingController _editingController = TextEditingController();
-  fbs.Feedback _feedback;
+  Iterable<fbs.Feedback> _feedbackList;
   bool _loading = false;
 
-  void _setFeedback(fbs.Feedback feedback) {
+  bool get _isError =>
+      _feedbackList?.length == 1 && _feedbackList.first is fbs.QueryError;
+
+  void _setFeedbackList(Iterable<fbs.Feedback> feedbackList) {
     setState(() {
-      _feedback = feedback;
+      _feedbackList = feedbackList;
     });
   }
 
@@ -113,124 +116,156 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  widget._homeLogo,
-                  style: GoogleFonts.getFont('Anton')
-                      .copyWith(height: 1.8, fontSize: 45),
-                ),
+                _buildLogo(),
                 const SizedBox(
                   height: 30,
                 ),
-                Container(
-                  child: TextField(
-                    controller: _editingController,
-                    maxLength: 500,
-                    maxLines: 10,
-                    keyboardType: TextInputType.multiline,
-                    style: Theme.of(context).textTheme.bodyText1,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.all(16),
-                      errorText: _feedback is fbs.NegativeFeedback ||
-                              _feedback is fbs.QueryError
-                          ? _feedback?.message
-                          : null,
-                      errorStyle: Theme.of(context).textTheme.caption.copyWith(
-                            color: Colors.red,
-                            fontSize: 15,
-                          ),
-                      hintText: widget._inputHint,
-                      hintStyle: Theme.of(context)
-                          .textTheme
-                          .bodyText1
-                          .copyWith(color: Colors.blueGrey),
-                    ),
-                  ),
-                  margin: const EdgeInsets.only(
-                    left: 25,
-                    right: 25,
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Visibility(
-                      visible: _loading == false &&
-                          _feedback is fbs.PositiveFeedback,
-                      child: Text(
-                        _feedback?.message ?? "",
-                        style: Theme.of(context).textTheme.caption.copyWith(
-                              color: Colors.lightGreen,
-                              fontSize: 15,
-                            ),
-                      ),
-                    ),
-                    Visibility(
-                      visible: _loading == true,
-                      child: const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    RaisedButton(
-                      onPressed: _loading == true
-                          ? null
-                          : () async {
-                              _setLoading(true);
-                              final String input =
-                                  _editingController.text?.trim() ?? "";
-                              if (input.isNotEmpty) {
-                                final fbs.Feedback feedback = await query(
-                                  endpoint: kEndpoint,
-                                  q: input,
-                                );
-                                _setFeedback(feedback);
-                              } else {
-                                _setFeedback(null);
-                              }
-                              _setLoading(false);
-                            },
-                      child: Text(
-                        widget._submitLabel,
-                        style: GoogleFonts.getFont('Roboto'),
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    FlatButton(
-                      onPressed: _loading == true
-                          ? null
-                          : () {
-                              _editingController.text = "";
-                              _setFeedback(null);
-                              _setLoading(false);
-                            },
-                      child: Text(
-                        widget._clearLabel,
-                        style: GoogleFonts.getFont('Roboto'),
-                      ),
-                    )
-                  ],
-                )
+                _buildInput(),
+                _buildOutput(),
+                _buildSubmitAndClear(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Text(
+          widget._homeLogo,
+          style:
+              GoogleFonts.getFont('Anton').copyWith(height: 1.8, fontSize: 45),
+        ),
+        const Text(
+          "v2.0",
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInput() {
+    return Container(
+      child: TextField(
+        controller: _editingController,
+        maxLength: 500,
+        maxLines: 10,
+        keyboardType: TextInputType.multiline,
+        style: Theme.of(context).textTheme.bodyText1,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.all(16),
+          hintText: widget._inputHint,
+          hintStyle: Theme.of(context)
+              .textTheme
+              .bodyText1
+              .copyWith(color: Colors.blueGrey),
+          errorText:
+              _isError ? (_feedbackList.first as fbs.QueryError).message : null,
+          errorStyle: Theme.of(context).textTheme.caption.copyWith(
+                color: Colors.red,
+                fontSize: 15,
+              ),
+        ),
+      ),
+      margin: const EdgeInsets.only(
+        left: 25,
+        right: 25,
+      ),
+    );
+  }
+
+  Widget _buildOutput() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Visibility(
+          visible: _loading == false && _feedbackList != null,
+          child: _buildScoreList(),
+        ),
+        Visibility(
+          visible: _loading == true,
+          child: const SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScoreList() {
+    if (_isError) {
+      return const SizedBox.shrink();
+    }
+    // 0 - hate speech 1 - offensive language 2 - neither.
+    return ListView(
+      shrinkWrap: true,
+      children: _feedbackList?.map((fbs.Feedback feedback) {
+            final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
+            return LinearProgressIndicator(
+              value: (feedback as fbs.CheckFeedback).score,
+              valueColor: AlwaysStoppedAnimation<Color>(cfb.score == 0
+                  ? Colors.red
+                  : cfb.score == 1 ? Colors.purple : Colors.green),
+              minHeight: 15,
+            );
+          })?.toList() ??
+          <Widget>[],
+    );
+  }
+
+  Widget _buildSubmitAndClear() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        RaisedButton(
+          onPressed: _loading == true
+              ? null
+              : () async {
+                  _setLoading(true);
+                  final String input = _editingController.text?.trim() ?? "";
+                  if (input.isNotEmpty) {
+                    final Iterable<fbs.Feedback> feedbackList = await query(
+                      endpoint: kEndpoint,
+                      q: input,
+                    );
+                    _setFeedbackList(feedbackList);
+                  } else {
+                    _setFeedbackList(null);
+                  }
+                  _setLoading(false);
+                },
+          child: Text(
+            widget._submitLabel,
+            style: GoogleFonts.getFont('Roboto'),
+          ),
+        ),
+        const SizedBox(
+          width: 10,
+        ),
+        FlatButton(
+          onPressed: _loading == true
+              ? null
+              : () {
+                  _editingController.text = "";
+                  _setFeedbackList(null);
+                  _setLoading(false);
+                },
+          child: Text(
+            widget._clearLabel,
+            style: GoogleFonts.getFont('Roboto'),
+          ),
+        )
+      ],
     );
   }
 }
