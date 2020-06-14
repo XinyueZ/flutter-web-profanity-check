@@ -8,7 +8,7 @@
     ],
     "rewrites": [{
       "source": "/profanityCheck",
-      "function": "profanityCheck"
+      "function": "profanityCheck2"
     }]
   }
 }
