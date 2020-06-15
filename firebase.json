@@ -7,8 +7,8 @@
       "**/node_modules/**"
     ],
     "rewrites": [{
-      "source": "/profanityCheck",
-      "function": "profanityCheck"
+      "source": "/profanityCheck2",
+      "function": "profanityCheck2"
     }]
   }
 }

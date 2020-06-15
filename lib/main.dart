@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
@@ -22,7 +23,6 @@ class ProfanityCheckApp extends StatelessWidget {
         inputHint: kInputHint,
         submitLabel: kSubmitLabel,
         clearLabel: kClear,
-        sourceCodeLocation: kSourceCodeLocation,
       ),
     );
   }
@@ -35,26 +35,22 @@ class HomePage extends StatefulWidget {
     @required String inputHint,
     @required String submitLabel,
     @required String clearLabel,
-    @required String sourceCodeLocation,
   })  : assert(title is String),
         assert(homeLogo is String),
         assert(inputHint is String),
         assert(submitLabel is String),
         assert(clearLabel is String),
-        assert(sourceCodeLocation is String),
         _title = title,
         _homeLogo = homeLogo,
         _inputHint = inputHint,
         _submitLabel = submitLabel,
-        _clearLabel = clearLabel,
-        _sourceCodeLocation = sourceCodeLocation;
+        _clearLabel = clearLabel;
 
   final String _title;
   final String _homeLogo;
   final String _inputHint;
   final String _submitLabel;
   final String _clearLabel;
-  final String _sourceCodeLocation;
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -62,12 +58,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final TextEditingController _editingController = TextEditingController();
-  fbs.Feedback _feedback;
+  Iterable<fbs.Feedback> _feedbackList;
   bool _loading = false;
 
-  void _setFeedback(fbs.Feedback feedback) {
+  bool get _isError =>
+      _feedbackList?.length == 1 && _feedbackList.first is fbs.QueryError;
+
+  void _setFeedbackList(Iterable<fbs.Feedback> feedbackList) {
     setState(() {
-      _feedback = feedback;
+      _feedbackList = feedbackList;
     });
   }
 
@@ -93,144 +92,232 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 15.0,
-        actions: <Widget>[
-          FlatButton(
-            child: Image.asset("assets/images/github.png"),
-            onPressed: () async {
-              _launchInBrowser(widget._sourceCodeLocation);
-            },
-          )
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  widget._homeLogo,
-                  style: GoogleFonts.getFont('Anton')
-                      .copyWith(height: 1.8, fontSize: 45),
-                ),
-                const SizedBox(
-                  height: 30,
-                ),
-                Container(
-                  child: TextField(
-                    controller: _editingController,
-                    maxLength: 500,
-                    maxLines: 10,
-                    keyboardType: TextInputType.multiline,
-                    style: Theme.of(context).textTheme.bodyText1,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.all(16),
-                      errorText: _feedback is fbs.NegativeFeedback ||
-                              _feedback is fbs.QueryError
-                          ? _feedback?.message
-                          : null,
-                      errorStyle: Theme.of(context).textTheme.caption.copyWith(
-                            color: Colors.red,
-                            fontSize: 15,
-                          ),
-                      hintText: widget._inputHint,
-                      hintStyle: Theme.of(context)
-                          .textTheme
-                          .bodyText1
-                          .copyWith(color: Colors.blueGrey),
-                    ),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 50),
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _buildLogo(),
+                  const SizedBox(
+                    height: 30,
                   ),
-                  margin: const EdgeInsets.only(
-                    left: 25,
-                    right: 25,
+                  _buildInput(),
+                  _buildOutput(),
+                  const SizedBox(
+                    height: 5,
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Visibility(
-                      visible: _loading == false &&
-                          _feedback is fbs.PositiveFeedback,
-                      child: Text(
-                        _feedback?.message ?? "",
-                        style: Theme.of(context).textTheme.caption.copyWith(
-                              color: Colors.lightGreen,
-                              fontSize: 15,
-                            ),
-                      ),
-                    ),
-                    Visibility(
-                      visible: _loading == true,
-                      child: const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    RaisedButton(
-                      onPressed: _loading == true
-                          ? null
-                          : () async {
-                              _setLoading(true);
-                              final String input =
-                                  _editingController.text?.trim() ?? "";
-                              if (input.isNotEmpty) {
-                                final fbs.Feedback feedback = await query(
-                                  endpoint: kEndpoint,
-                                  q: input,
-                                );
-                                _setFeedback(feedback);
-                              } else {
-                                _setFeedback(null);
-                              }
-                              _setLoading(false);
-                            },
-                      child: Text(
-                        widget._submitLabel,
-                        style: GoogleFonts.getFont('Roboto'),
-                      ),
-                    ),
-                    const SizedBox(
-                      width: 10,
-                    ),
-                    FlatButton(
-                      onPressed: _loading == true
-                          ? null
-                          : () {
-                              _editingController.text = "";
-                              _setFeedback(null);
-                              _setLoading(false);
-                            },
-                      child: Text(
-                        widget._clearLabel,
-                        style: GoogleFonts.getFont('Roboto'),
-                      ),
-                    )
-                  ],
-                )
-              ],
+                  _buildSubmitAndClear(),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 15.0,
+      actions: <Widget>[
+        FlatButton(
+          child: Text(
+            "API",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser("${kEndpoint}hello");
+          },
+        ),
+        FlatButton(
+          child: Text(
+            "Model",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser(kModelDownload);
+          },
+        ),
+        FlatButton(
+          child: Text(
+            "Data",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser(kLabeledData);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLogo() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Text(
+          widget._homeLogo,
+          style:
+              GoogleFonts.getFont('Anton').copyWith(height: 1.8, fontSize: 45),
+        ),
+        const Text(
+          "v2.0",
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInput() {
+    return TextField(
+      controller: _editingController,
+      maxLength: 500,
+      maxLines: 5,
+      keyboardType: TextInputType.multiline,
+      style: Theme.of(context).textTheme.bodyText1,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.all(16),
+        hintText: widget._inputHint,
+        hintStyle: Theme.of(context)
+            .textTheme
+            .bodyText1
+            .copyWith(color: Colors.blueGrey),
+        errorText:
+            _isError ? (_feedbackList.first as fbs.QueryError).message : null,
+        errorStyle: Theme.of(context).textTheme.caption.copyWith(
+              color: Colors.red,
+              fontSize: 15,
+            ),
+      ),
+    );
+  }
+
+  Widget _buildOutput() {
+    return AnimatedOpacity(
+      opacity: _loading ? 0 : 1,
+      duration: const Duration(milliseconds: 300),
+      child: _buildScoreList(),
+    );
+  }
+
+  Widget _buildScoreList() {
+    if (_isError) {
+      return const SizedBox.shrink();
+    }
+    // 0 - hate speech 1 - offensive language 2 - neither.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: _feedbackList?.map((fbs.Feedback feedback) {
+            final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
+            return Stack(
+              alignment: AlignmentDirectional.center,
+              children: <Widget>[
+                LinearProgressIndicator(
+                  value: (feedback as fbs.CheckFeedback).score,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    cfb.type == fbs.CheckType.hateSpeech
+                        ? Colors.red
+                        : cfb.type == fbs.CheckType.offensiveLanguage
+                            ? Colors.purple
+                            : Colors.green,
+                  ),
+                  minHeight: 20,
+                ),
+                Center(
+                  child: Text(
+                    cfb.label,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.getFont('Source Code Pro').copyWith(
+                      fontSize: 13,
+                      color: Colors.teal,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          })?.toList() ??
+          <Widget>[],
+    );
+  }
+
+  Widget _buildSubmitAndClear() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Visibility(
+          visible: _loading == true,
+          child: const SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+        const SizedBox(
+          width: 10,
+        ),
+        RaisedButton(
+          onPressed: _loading == true
+              ? null
+              : () async {
+                  _setLoading(true);
+                  final String input = _editingController.text?.trim() ?? "";
+                  if (input.isNotEmpty) {
+                    final Iterable<fbs.Feedback> feedbackList = await query(
+                      endpoint: kEndpoint,
+                      q: input,
+                    );
+                    _setFeedbackList(feedbackList);
+                  } else {
+                    _setFeedbackList(null);
+                  }
+                  _setLoading(false);
+                },
+          child: Text(
+            widget._submitLabel,
+            style: GoogleFonts.getFont('Roboto'),
+          ),
+        ),
+        const SizedBox(
+          width: 10,
+        ),
+        FlatButton(
+          onPressed: _loading == true
+              ? null
+              : () {
+                  _editingController.text = "";
+                  _setFeedbackList(null);
+                  _setLoading(false);
+                },
+          child: Text(
+            widget._clearLabel,
+            style: GoogleFonts.getFont('Roboto'),
+          ),
+        )
+      ],
     );
   }
 }
