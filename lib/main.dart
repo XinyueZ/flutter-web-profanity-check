@@ -23,7 +23,6 @@ class ProfanityCheckApp extends StatelessWidget {
         inputHint: kInputHint,
         submitLabel: kSubmitLabel,
         clearLabel: kClear,
-        sourceCodeLocation: kSourceCodeLocation,
       ),
     );
   }
@@ -36,26 +35,22 @@ class HomePage extends StatefulWidget {
     @required String inputHint,
     @required String submitLabel,
     @required String clearLabel,
-    @required String sourceCodeLocation,
   })  : assert(title is String),
         assert(homeLogo is String),
         assert(inputHint is String),
         assert(submitLabel is String),
         assert(clearLabel is String),
-        assert(sourceCodeLocation is String),
         _title = title,
         _homeLogo = homeLogo,
         _inputHint = inputHint,
         _submitLabel = submitLabel,
-        _clearLabel = clearLabel,
-        _sourceCodeLocation = sourceCodeLocation;
+        _clearLabel = clearLabel;
 
   final String _title;
   final String _homeLogo;
   final String _inputHint;
   final String _submitLabel;
   final String _clearLabel;
-  final String _sourceCodeLocation;
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -97,18 +92,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 15.0,
-        actions: <Widget>[
-          FlatButton(
-            child: Image.asset("assets/images/github.png"),
-            onPressed: () async {
-              _launchInBrowser(widget._sourceCodeLocation);
-            },
-          )
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 50),
@@ -138,6 +122,54 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 15.0,
+      actions: <Widget>[
+        FlatButton(
+          child: Text(
+            "API",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser("${kEndpoint}hello");
+          },
+        ),
+        FlatButton(
+          child: Text(
+            "Model",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser(kModelDownload);
+          },
+        ),
+        FlatButton(
+          child: Text(
+            "Data",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 20,
+              color: Colors.teal,
+            ),
+          ),
+          onPressed: () async {
+            _launchInBrowser(kLabeledData);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildLogo() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -155,28 +187,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildInput() {
-    return Container(
-      child: TextField(
-        controller: _editingController,
-        maxLength: 500,
-        maxLines: 10,
-        keyboardType: TextInputType.multiline,
-        style: Theme.of(context).textTheme.bodyText1,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.all(16),
-          hintText: widget._inputHint,
-          hintStyle: Theme.of(context)
-              .textTheme
-              .bodyText1
-              .copyWith(color: Colors.blueGrey),
-          errorText:
-              _isError ? (_feedbackList.first as fbs.QueryError).message : null,
-          errorStyle: Theme.of(context).textTheme.caption.copyWith(
-                color: Colors.red,
-                fontSize: 15,
-              ),
-        ),
+    return TextField(
+      controller: _editingController,
+      maxLength: 500,
+      maxLines: 5,
+      keyboardType: TextInputType.multiline,
+      style: Theme.of(context).textTheme.bodyText1,
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.all(16),
+        hintText: widget._inputHint,
+        hintStyle: Theme.of(context)
+            .textTheme
+            .bodyText1
+            .copyWith(color: Colors.blueGrey),
+        errorText:
+            _isError ? (_feedbackList.first as fbs.QueryError).message : null,
+        errorStyle: Theme.of(context).textTheme.caption.copyWith(
+              color: Colors.red,
+              fontSize: 15,
+            ),
       ),
     );
   }

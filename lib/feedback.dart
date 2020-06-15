@@ -23,11 +23,11 @@ class CheckFeedback implements Feedback {
   String get label {
     switch (type) {
       case CheckType.hateSpeech:
-        return hateSpeechLabel;
+        return kHateSpeechLabel;
       case CheckType.offensiveLanguage:
-        return offensiveLanguageLabel;
+        return kOffensiveLanguageLabel;
       default:
-        return neitherLabel;
+        return kNeitherLabel;
     }
   }
 }
