@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
@@ -109,21 +110,27 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                _buildLogo(),
-                const SizedBox(
-                  height: 30,
-                ),
-                _buildInput(),
-                _buildOutput(),
-                _buildSubmitAndClear(),
-              ],
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 50),
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _buildLogo(),
+                  const SizedBox(
+                    height: 30,
+                  ),
+                  _buildInput(),
+                  _buildOutput(),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  _buildSubmitAndClear(),
+                ],
+              ),
             ),
           ),
         ),
@@ -171,32 +178,14 @@ class _HomePageState extends State<HomePage> {
               ),
         ),
       ),
-      margin: const EdgeInsets.only(
-        left: 25,
-        right: 25,
-      ),
     );
   }
 
   Widget _buildOutput() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        Visibility(
-          visible: _loading == false && _feedbackList != null,
-          child: _buildScoreList(),
-        ),
-        Visibility(
-          visible: _loading == true,
-          child: const SizedBox(
-            width: 15,
-            height: 15,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-            ),
-          ),
-        ),
-      ],
+    return AnimatedOpacity(
+      opacity: _loading ? 0 : 1,
+      duration: const Duration(milliseconds: 300),
+      child: _buildScoreList(),
     );
   }
 
@@ -205,16 +194,36 @@ class _HomePageState extends State<HomePage> {
       return const SizedBox.shrink();
     }
     // 0 - hate speech 1 - offensive language 2 - neither.
-    return ListView(
-      shrinkWrap: true,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: _feedbackList?.map((fbs.Feedback feedback) {
             final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
-            return LinearProgressIndicator(
-              value: (feedback as fbs.CheckFeedback).score,
-              valueColor: AlwaysStoppedAnimation<Color>(cfb.score == 0
-                  ? Colors.red
-                  : cfb.score == 1 ? Colors.purple : Colors.green),
-              minHeight: 15,
+            return Stack(
+              alignment: AlignmentDirectional.center,
+              children: <Widget>[
+                LinearProgressIndicator(
+                  value: (feedback as fbs.CheckFeedback).score,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    cfb.type == fbs.CheckType.hateSpeech
+                        ? Colors.red
+                        : cfb.type == fbs.CheckType.offensiveLanguage
+                            ? Colors.purple
+                            : Colors.green,
+                  ),
+                  minHeight: 20,
+                ),
+                Center(
+                  child: Text(
+                    cfb.label,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.getFont('Source Code Pro').copyWith(
+                      fontSize: 13,
+                      color: Colors.teal,
+                    ),
+                  ),
+                ),
+              ],
             );
           })?.toList() ??
           <Widget>[],
@@ -227,6 +236,19 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
+        Visibility(
+          visible: _loading == true,
+          child: const SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+        const SizedBox(
+          width: 10,
+        ),
         RaisedButton(
           onPressed: _loading == true
               ? null
