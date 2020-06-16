@@ -10,6 +10,8 @@ const String kClear = "Clear";
 const String kHateSpeechLabel = "Hate speech";
 const String kOffensiveLanguageLabel = "Offensive language";
 const String kNeitherLabel = "Fine";
+const String kTooltip =
+    "If the prediction is not correct, click here to train me.";
 
 const String kEndpoint =
     "https://profanity-check-c9365.web.app/profanityCheck2?q=";

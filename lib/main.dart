@@ -1,5 +1,7 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
@@ -57,6 +59,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const Duration _animDuration = Duration(milliseconds: 300);
+
   final TextEditingController _editingController = TextEditingController();
   Iterable<fbs.Feedback> _feedbackList;
   bool _loading = false;
@@ -107,7 +111,13 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(
                     height: 30,
                   ),
-                  _buildInput(),
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: <Widget>[
+                      _buildInput(),
+                      _buildCorrectMark(),
+                    ],
+                  ),
                   _buildOutput(),
                   const SizedBox(
                     height: 5,
@@ -214,19 +224,21 @@ class _HomePageState extends State<HomePage> {
   Widget _buildOutput() {
     return AnimatedOpacity(
       opacity: _loading ? 0 : 1,
-      duration: const Duration(milliseconds: 300),
-      child: _buildScoreList(),
+      duration: _animDuration,
+      child: _buildScoreBars(),
     );
   }
 
-  Widget _buildScoreList() {
-    if (_isError) {
+  Widget _buildScoreBars() {
+    if (_isError || _feedbackList == null) {
       return const SizedBox.shrink();
     }
-    // 0 - hate speech 1 - offensive language 2 - neither.
+
+    final fbs.Feedback maxFeedback = maxBy(_feedbackList,
+        (fbs.Feedback feedback) => (feedback as fbs.CheckFeedback).score);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: _feedbackList?.map((fbs.Feedback feedback) {
+      children: _feedbackList.map((fbs.Feedback feedback) {
             final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
             return Stack(
               alignment: AlignmentDirectional.center,
@@ -243,14 +255,12 @@ class _HomePageState extends State<HomePage> {
                   ),
                   minHeight: 20,
                 ),
-                Center(
-                  child: Text(
-                    cfb.label,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.getFont('Source Code Pro').copyWith(
-                      fontSize: 13,
-                      color: Colors.teal,
-                    ),
+                Text(
+                  cfb.label,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.getFont('Source Code Pro').copyWith(
+                    fontSize: 13,
+                    color: Colors.teal,
                   ),
                 ),
               ],
@@ -279,45 +289,80 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(
           width: 10,
         ),
-        RaisedButton(
-          onPressed: _loading == true
-              ? null
-              : () async {
-                  _setLoading(true);
-                  final String input = _editingController.text?.trim() ?? "";
-                  if (input.isNotEmpty) {
-                    final Iterable<fbs.Feedback> feedbackList = await query(
-                      endpoint: kEndpoint,
-                      q: input,
-                    );
-                    _setFeedbackList(feedbackList);
-                  } else {
-                    _setFeedbackList(null);
-                  }
-                  _setLoading(false);
-                },
-          child: Text(
-            widget._submitLabel,
-            style: GoogleFonts.getFont('Roboto'),
-          ),
-        ),
+        _buildSubmit(),
         const SizedBox(
           width: 10,
         ),
-        FlatButton(
-          onPressed: _loading == true
-              ? null
-              : () {
-                  _editingController.text = "";
-                  _setFeedbackList(null);
-                  _setLoading(false);
-                },
-          child: Text(
-            widget._clearLabel,
-            style: GoogleFonts.getFont('Roboto'),
-          ),
-        )
+        _buildClear(),
       ],
+    );
+  }
+
+  Widget _buildClear() {
+    return FlatButton(
+      onPressed: _loading == true
+          ? null
+          : () {
+              _editingController.text = "";
+              _setFeedbackList(null);
+              _setLoading(false);
+            },
+      child: Text(
+        widget._clearLabel,
+        style: GoogleFonts.getFont('Roboto'),
+      ),
+    );
+  }
+
+  Widget _buildSubmit() {
+    return RaisedButton(
+      onPressed: _loading == true
+          ? null
+          : () async {
+              _setLoading(true);
+              final String input = _editingController.text?.trim() ?? "";
+              if (input.isNotEmpty) {
+                final Iterable<fbs.Feedback> feedbackList = await query(
+                  endpoint: kEndpoint,
+                  q: input,
+                );
+                _setFeedbackList(feedbackList);
+              } else {
+                _setFeedbackList(null);
+              }
+              _setLoading(false);
+            },
+      child: Text(
+        widget._submitLabel,
+        style: GoogleFonts.getFont('Roboto'),
+      ),
+    );
+  }
+
+  Widget _buildCorrectMark() {
+    return AnimatedOpacity(
+      opacity: _loading ? 0 : 1,
+      duration: _animDuration,
+      child: Visibility(
+        visible: !(_loading || _isError || _feedbackList == null),
+        child: _buildTooltip(
+          IconButton(
+            icon: Image.asset(
+              "assets/images/ic_warning.png",
+              width: 15,
+              height: 15,
+            ),
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTooltip(Widget child) {
+    return Tooltip(
+      message: kTooltip,
+      child: child,
     );
   }
 }
