@@ -3,7 +3,7 @@ from flask import escape
 from flask import jsonify
 from google.cloud import automl_v1beta1 as automl
 
-project_id = "project_id" # Your google project id in GCP.
+project_id = "YOUR PRJ-ID" # Your google project id in GCP.
 model_id = "model_id" # The model's ID deployed in the GCP.
 region = 'region' # The location where you deployed your model.
 client_options = {'api_endpoint': 'eu-automl.googleapis.com:443'} # Optional, for "eu-", you deployed your model in EU region.
