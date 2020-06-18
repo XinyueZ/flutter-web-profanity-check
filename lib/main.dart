@@ -173,23 +173,21 @@ class _HomePageState extends State<HomePage> {
                     height: 30,
                   ),
                   _buildInput(),
-                  Stack(
-                    alignment: AlignmentDirectional.center,
-                    children: <Widget>[
-                      _buildSubmitAndClear(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: <Widget>[
-                          _buildTypeSuggestions(),
-                          _buildSuggestionWarning(),
-                        ],
-                      ),
-                    ],
-                  ),
+                  _buildSubmitAndClear(),
                   const SizedBox(
-                    height: 5,
+                    height: 15,
                   ),
                   _buildOutput(),
+                  const SizedBox(
+                    height: 15,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      _buildTypeSuggestions(),
+                      _buildSuggestionWarning(),
+                    ],
+                  ),
                 ],
               ),
             ),
