@@ -1,3 +1,4 @@
+import 'package:async/async.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -5,9 +6,10 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
+import 'package:flutter_web_profanity_check/entry.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
 import 'package:flutter_web_profanity_check/feedback.dart';
-import 'package:flutter_web_profanity_check/query.dart';
+import 'package:flutter_web_profanity_check/net.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,6 +101,9 @@ class _HomePageState extends State<HomePage> {
   bool _loading = false;
   bool _showSuggestions = false;
   CheckFeedback _suggestion;
+  AddEntry _addEntry;
+  UpdateEntry _updateEntry;
+  int _pos;
 
   bool get _isError =>
       _feedbackList?.length == 1 && _feedbackList.first is fbs.QueryError;
@@ -130,6 +135,24 @@ class _HomePageState extends State<HomePage> {
   void _setSuggestion(CheckFeedback suggestion) {
     setState(() {
       _suggestion = suggestion;
+    });
+  }
+
+  void _setAddEntry(AddEntry addEntry) {
+    setState(() {
+      _addEntry = addEntry;
+    });
+  }
+
+  void _setUpdateEntry(UpdateEntry updateEntry) {
+    setState(() {
+      _updateEntry = updateEntry;
+    });
+  }
+
+  void _setPos(int pos) {
+    setState(() {
+      _pos = pos;
     });
   }
 
@@ -165,21 +188,23 @@ class _HomePageState extends State<HomePage> {
                     height: 30,
                   ),
                   _buildInput(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Stack(
+                    alignment: AlignmentDirectional.center,
                     children: <Widget>[
-                      _buildTypeSuggestions(),
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: _buildSuggestionWarning(),
+                      _buildSubmitAndClear(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: <Widget>[
+                          _buildTypeSuggestions(),
+                          _buildSuggestionWarning(),
+                        ],
                       ),
                     ],
                   ),
-                  _buildOutput(),
                   const SizedBox(
                     height: 5,
                   ),
-                  _buildSubmitAndClear(),
+                  _buildOutput(),
                 ],
               ),
             ),
@@ -296,8 +321,6 @@ class _HomePageState extends State<HomePage> {
       return const SizedBox.shrink();
     }
 
-    final fbs.Feedback maxFeedback = maxBy(_feedbackList,
-        (fbs.Feedback feedback) => (feedback as fbs.CheckFeedback).score);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: _feedbackList.map((fbs.Feedback feedback) {
@@ -362,15 +385,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildClear() {
     return FlatButton(
-      onPressed: _loading == true
-          ? null
-          : () {
-              _editingController.text = "";
-              _setFeedbackList(null);
-              _setLoading(false);
-              _setSuggestions(false);
-              _setSuggestion(null);
-            },
+      onPressed: _loading == true ? null : () => _clear(true),
       child: Text(
         widget._clearLabel,
         style: GoogleFonts.getFont('Roboto'),
@@ -378,11 +393,26 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void _clear(bool alsoInput) {
+    if (alsoInput) {
+      _editingController.text = "";
+    }
+    _setFeedbackList(null);
+    _setLoading(false);
+    _setSuggestions(false);
+    _setSuggestion(null);
+    _setAddEntry(null);
+    _setUpdateEntry(null);
+    _setPos(null);
+  }
+
   Widget _buildSubmit() {
     return RaisedButton(
       onPressed: _loading == true
           ? null
           : () async {
+              _clear(false);
+
               _setLoading(true);
               final String input = _editingController.text?.trim() ?? "";
               if (input.isNotEmpty) {
@@ -390,10 +420,35 @@ class _HomePageState extends State<HomePage> {
                   endpoint: kEndpointCheck,
                   q: input,
                 );
+
+                final fbs.Feedback maxFeedback = maxBy(
+                    feedbackList,
+                    (fbs.Feedback feedback) =>
+                        (feedback as fbs.CheckFeedback).score);
+
+                final int cls = fbs.CheckType.hateSpeech ==
+                        (maxFeedback as fbs.CheckFeedback).type
+                    ? 0
+                    : fbs.CheckType.offensiveLanguage ==
+                            (maxFeedback as fbs.CheckFeedback).type
+                        ? 1
+                        : 2;
+
+                final Result<int> posResult = await addEntry(
+                  endpoint: kEndpointAddEntry,
+                  cls: cls,
+                  tweet: input,
+                );
+
+                if (posResult.isValue) {
+                  _setPos(posResult.asValue.value);
+                }
+
                 _setFeedbackList(feedbackList);
               } else {
                 _setFeedbackList(null);
               }
+
               _setLoading(false);
             },
       child: Text(
@@ -403,20 +458,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  bool get _isCompleted =>
+      !(_loading || _isError || _feedbackList == null) && _pos != null;
+
   Widget _buildSuggestionWarning() {
     return AnimatedOpacity(
-      opacity:  !(_loading || _isError || _feedbackList == null) ? 1 : 0,
+      opacity: _isCompleted ? 1 : 0,
       duration: _kAnimationDuration,
-      child: _buildTooltip(
-        IconButton(
-          icon: Image.asset(
-            "assets/images/ic_warning.png",
-            width: 15,
-            height: 15,
+      child: AnimatedContainer(
+        duration: _kAnimationDuration,
+        curve: Curves.easeOutSine,
+        width: _isCompleted ? null : 0,
+        height: _isCompleted ? null : 0,
+        child: _buildTooltip(
+          IconButton(
+            icon: Image.asset(
+              "assets/images/ic_warning.png",
+              width: 15,
+              height: 15,
+            ),
+            onPressed: _isCompleted
+                ? () {
+                    _toggleSuggestions();
+                  }
+                : null,
           ),
-          onPressed: () {
-            _toggleSuggestions();
-          },
         ),
       ),
     );
@@ -437,6 +503,8 @@ class _HomePageState extends State<HomePage> {
       child: AnimatedContainer(
         duration: _kAnimationDuration,
         curve: Curves.easeOutSine,
+        width: _showSuggestions ? null : 0,
+        height: _showSuggestions ? null : 0,
         margin: EdgeInsets.symmetric(horizontal: _showSuggestions ? 32 : 0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

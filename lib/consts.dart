@@ -18,5 +18,10 @@ const String kTooltip = "Let me know if the result is incorrect.";
 
 const String kEndpointCheck =
     "https://profanity-check-c9365.web.app/profanityCheck2?q=";
+const String kEndpointAddEntry =
+    "https://profanity-check-c9365.web.app/addEntry";
+const String kEndpointUpdateEntry =
+    "https://profanity-check-c9365.web.app/updateEntry";
+
 const String kModelDownload = "http://tinyurl.com/y824odfu";
 const String kLabeledData = "http://tinyurl.com/y8ylg8zo";
