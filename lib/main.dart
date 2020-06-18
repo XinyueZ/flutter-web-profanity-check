@@ -101,8 +101,6 @@ class _HomePageState extends State<HomePage> {
   bool _loading = false;
   bool _showSuggestions = false;
   CheckFeedback _suggestion;
-  AddEntry _addEntry;
-  UpdateEntry _updateEntry;
   int _pos;
 
   bool get _isError =>
@@ -135,18 +133,6 @@ class _HomePageState extends State<HomePage> {
   void _setSuggestion(CheckFeedback suggestion) {
     setState(() {
       _suggestion = suggestion;
-    });
-  }
-
-  void _setAddEntry(AddEntry addEntry) {
-    setState(() {
-      _addEntry = addEntry;
-    });
-  }
-
-  void _setUpdateEntry(UpdateEntry updateEntry) {
-    setState(() {
-      _updateEntry = updateEntry;
     });
   }
 
@@ -401,8 +387,6 @@ class _HomePageState extends State<HomePage> {
     _setLoading(false);
     _setSuggestions(false);
     _setSuggestion(null);
-    _setAddEntry(null);
-    _setUpdateEntry(null);
     _setPos(null);
   }
 
@@ -421,29 +405,7 @@ class _HomePageState extends State<HomePage> {
                   q: input,
                 );
 
-                final fbs.Feedback maxFeedback = maxBy(
-                    feedbackList,
-                    (fbs.Feedback feedback) =>
-                        (feedback as fbs.CheckFeedback).score);
-
-                final int cls = fbs.CheckType.hateSpeech ==
-                        (maxFeedback as fbs.CheckFeedback).type
-                    ? 0
-                    : fbs.CheckType.offensiveLanguage ==
-                            (maxFeedback as fbs.CheckFeedback).type
-                        ? 1
-                        : 2;
-
-                final Result<int> posResult = await addEntry(
-                  endpoint: kEndpointAddEntry,
-                  cls: cls,
-                  tweet: input,
-                );
-
-                if (posResult.isValue) {
-                  _setPos(posResult.asValue.value);
-                }
-
+                _addEntry(feedbackList, input);
                 _setFeedbackList(feedbackList);
               } else {
                 _setFeedbackList(null);
@@ -456,6 +418,30 @@ class _HomePageState extends State<HomePage> {
         style: GoogleFonts.getFont('Roboto'),
       ),
     );
+  }
+
+  Future<void> _addEntry(
+      Iterable<fbs.Feedback> feedbackList, String input) async {
+    final fbs.Feedback maxFeedback = maxBy(feedbackList,
+        (fbs.Feedback feedback) => (feedback as fbs.CheckFeedback).score);
+
+    final int cls =
+        fbs.CheckType.hateSpeech == (maxFeedback as fbs.CheckFeedback).type
+            ? 0
+            : fbs.CheckType.offensiveLanguage ==
+                    (maxFeedback as fbs.CheckFeedback).type
+                ? 1
+                : 2;
+
+    final Result<int> posResult = await addEntry(
+      endpoint: kEndpointAddEntry,
+      cls: cls,
+      tweet: input,
+    );
+
+    if (posResult.isValue) {
+      _setPos(posResult.asValue.value);
+    }
   }
 
   bool get _isCompleted =>
