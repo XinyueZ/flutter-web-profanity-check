@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 
 enum CheckType {
@@ -28,6 +30,28 @@ class CheckFeedback implements Feedback {
         return kOffensiveLanguageLabel;
       default:
         return kNeitherLabel;
+    }
+  }
+
+  int get cls {
+    switch (type) {
+      case CheckType.hateSpeech:
+        return 0;
+      case CheckType.offensiveLanguage:
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  Color get color {
+    switch (type) {
+      case CheckType.hateSpeech:
+        return Colors.red;
+      case CheckType.offensiveLanguage:
+        return Colors.purple;
+      default:
+        return Colors.green;
     }
   }
 }

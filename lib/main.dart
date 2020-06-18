@@ -6,7 +6,6 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
-import 'package:flutter_web_profanity_check/entry.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
 import 'package:flutter_web_profanity_check/feedback.dart';
 import 'package:flutter_web_profanity_check/net.dart';
@@ -318,11 +317,7 @@ class _HomePageState extends State<HomePage> {
                   value: (feedback as fbs.CheckFeedback).score,
                   backgroundColor: Colors.transparent,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    cfb.type == fbs.CheckType.hateSpeech
-                        ? Colors.red
-                        : cfb.type == fbs.CheckType.offensiveLanguage
-                            ? Colors.purple
-                            : Colors.green,
+                    cfb.color,
                   ),
                   minHeight: 20,
                 ),
@@ -405,7 +400,7 @@ class _HomePageState extends State<HomePage> {
                   q: input,
                 );
 
-                _addEntry(feedbackList, input);
+                await _addEntry(feedbackList, input);
                 _setFeedbackList(feedbackList);
               } else {
                 _setFeedbackList(null);
@@ -425,17 +420,9 @@ class _HomePageState extends State<HomePage> {
     final fbs.Feedback maxFeedback = maxBy(feedbackList,
         (fbs.Feedback feedback) => (feedback as fbs.CheckFeedback).score);
 
-    final int cls =
-        fbs.CheckType.hateSpeech == (maxFeedback as fbs.CheckFeedback).type
-            ? 0
-            : fbs.CheckType.offensiveLanguage ==
-                    (maxFeedback as fbs.CheckFeedback).type
-                ? 1
-                : 2;
-
     final Result<int> posResult = await addEntry(
       endpoint: kEndpointAddEntry,
-      cls: cls,
+      cls: (maxFeedback as fbs.CheckFeedback).cls,
       tweet: input,
     );
 
@@ -541,7 +528,19 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: checked ? Colors.white : Colors.indigo,
       onPressed: () {
         _setSuggestion(checkFeedback);
+        _updateEntry(checkFeedback);
       },
+    );
+  }
+
+  Future<void> _updateEntry(fbs.CheckFeedback checkFeedback) async {
+    if (_pos == null) {
+      return;
+    }
+    updateEntry(
+      endpoint: kEndpointUpdateEntry,
+      pos: _pos,
+      cls: checkFeedback.cls,
     );
   }
 }
