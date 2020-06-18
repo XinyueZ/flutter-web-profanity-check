@@ -1,5 +1,9 @@
 // $ flutter build web
 // cmd-shift-r to force reload page
+class WebVersionInfo {
+  static const String version = '2.1.0';
+  static const int buildNumber = 1;
+}
 
 const String kAppTitle = "Profanity Check";
 const String kHomeLogo = "Profanity Check";
@@ -10,10 +14,9 @@ const String kClear = "Clear";
 const String kHateSpeechLabel = "Hate speech";
 const String kOffensiveLanguageLabel = "Offensive language";
 const String kNeitherLabel = "Fine";
-const String kTooltip =
-    "If the prediction is not correct, click here to train me.";
+const String kTooltip = "Let me know if the result is incorrect.";
 
-const String kEndpoint =
+const String kEndpointCheck =
     "https://profanity-check-c9365.web.app/profanityCheck2?q=";
 const String kModelDownload = "http://tinyurl.com/y824odfu";
 const String kLabeledData = "http://tinyurl.com/y8ylg8zo";

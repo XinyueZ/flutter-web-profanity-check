@@ -1,30 +1,55 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
+import 'package:flutter_web_profanity_check/feedback.dart';
 import 'package:flutter_web_profanity_check/query.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info/package_info.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-void main() {
-  runApp(ProfanityCheckApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final String appVer = await _getAppVersion();
+
+  runApp(ProfanityCheckApp(
+    appVer: appVer,
+  ));
+}
+
+Future<String> _getAppVersion() async {
+  if (kIsWeb) {
+    return "${WebVersionInfo.version}+${WebVersionInfo.buildNumber}";
+  } else {
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    return "${packageInfo.version}+${packageInfo.buildNumber}";
+  }
 }
 
 class ProfanityCheckApp extends StatelessWidget {
+  const ProfanityCheckApp({
+    @required String appVer,
+  })  : assert(appVer is String),
+        _appVer = appVer;
+  final String _appVer;
+
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: kAppTitle,
       debugShowCheckedModeBanner: false,
       home: HomePage(
-        title: kAppTitle,
+        appVer: _appVer,
+        title: "",
         homeLogo: kHomeLogo,
         inputHint: kInputHint,
         submitLabel: kSubmitLabel,
         clearLabel: kClear,
+        tooltip: kTooltip,
       ),
     );
   }
@@ -32,38 +57,48 @@ class ProfanityCheckApp extends StatelessWidget {
 
 class HomePage extends StatefulWidget {
   const HomePage({
+    @required String appVer,
     @required String title,
     @required String homeLogo,
     @required String inputHint,
     @required String submitLabel,
     @required String clearLabel,
-  })  : assert(title is String),
+    @required String tooltip,
+  })  : assert(appVer is String),
+        assert(title is String),
         assert(homeLogo is String),
         assert(inputHint is String),
         assert(submitLabel is String),
         assert(clearLabel is String),
+        assert(tooltip is String),
+        _appVer = appVer,
         _title = title,
         _homeLogo = homeLogo,
         _inputHint = inputHint,
         _submitLabel = submitLabel,
-        _clearLabel = clearLabel;
+        _clearLabel = clearLabel,
+        _tooltip = tooltip;
 
+  final String _appVer;
   final String _title;
   final String _homeLogo;
   final String _inputHint;
   final String _submitLabel;
   final String _clearLabel;
+  final String _tooltip;
 
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  static const Duration _animDuration = Duration(milliseconds: 300);
+  static const Duration _kAnimationDuration = Duration(milliseconds: 300);
 
   final TextEditingController _editingController = TextEditingController();
   Iterable<fbs.Feedback> _feedbackList;
   bool _loading = false;
+  bool _showSuggestions = false;
+  CheckFeedback _suggestion;
 
   bool get _isError =>
       _feedbackList?.length == 1 && _feedbackList.first is fbs.QueryError;
@@ -77,6 +112,24 @@ class _HomePageState extends State<HomePage> {
   void _setLoading(bool loading) {
     setState(() {
       _loading = loading;
+    });
+  }
+
+  void _toggleSuggestions() {
+    setState(() {
+      _showSuggestions = !_showSuggestions;
+    });
+  }
+
+  void _setSuggestions(bool showSuggestions) {
+    setState(() {
+      _showSuggestions = showSuggestions;
+    });
+  }
+
+  void _setSuggestion(CheckFeedback suggestion) {
+    setState(() {
+      _suggestion = suggestion;
     });
   }
 
@@ -111,11 +164,15 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(
                     height: 30,
                   ),
-                  Stack(
-                    alignment: Alignment.bottomRight,
+                  _buildInput(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: <Widget>[
-                      _buildInput(),
-                      _buildCorrectMark(),
+                      _buildTypeSuggestions(),
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: _buildSuggestionWarning(),
+                      ),
                     ],
                   ),
                   _buildOutput(),
@@ -134,6 +191,7 @@ class _HomePageState extends State<HomePage> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
+      title: Text(widget._title),
       backgroundColor: Colors.white,
       elevation: 15.0,
       actions: <Widget>[
@@ -147,7 +205,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           onPressed: () async {
-            _launchInBrowser("${kEndpoint}hello");
+            _launchInBrowser("${kEndpointCheck}hello");
           },
         ),
         FlatButton(
@@ -189,8 +247,8 @@ class _HomePageState extends State<HomePage> {
           style:
               GoogleFonts.getFont('Anton').copyWith(height: 1.8, fontSize: 45),
         ),
-        const Text(
-          "v2.0",
+        Text(
+          widget._appVer,
         ),
       ],
     );
@@ -207,10 +265,9 @@ class _HomePageState extends State<HomePage> {
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.all(16),
         hintText: widget._inputHint,
-        hintStyle: Theme.of(context)
-            .textTheme
-            .bodyText1
-            .copyWith(color: Colors.blueGrey),
+        hintStyle: Theme.of(context).textTheme.bodyText1.copyWith(
+              color: Colors.blueGrey,
+            ),
         errorText:
             _isError ? (_feedbackList.first as fbs.QueryError).message : null,
         errorStyle: Theme.of(context).textTheme.caption.copyWith(
@@ -224,8 +281,13 @@ class _HomePageState extends State<HomePage> {
   Widget _buildOutput() {
     return AnimatedOpacity(
       opacity: _loading ? 0 : 1,
-      duration: _animDuration,
-      child: _buildScoreBars(),
+      duration: _kAnimationDuration,
+      child: AnimatedContainer(
+        duration: _kAnimationDuration,
+        curve: Curves.easeOutSine,
+        height: _isError || _feedbackList == null ? 0 : null,
+        child: _buildScoreBars(),
+      ),
     );
   }
 
@@ -306,6 +368,8 @@ class _HomePageState extends State<HomePage> {
               _editingController.text = "";
               _setFeedbackList(null);
               _setLoading(false);
+              _setSuggestions(false);
+              _setSuggestion(null);
             },
       child: Text(
         widget._clearLabel,
@@ -323,7 +387,7 @@ class _HomePageState extends State<HomePage> {
               final String input = _editingController.text?.trim() ?? "";
               if (input.isNotEmpty) {
                 final Iterable<fbs.Feedback> feedbackList = await query(
-                  endpoint: kEndpoint,
+                  endpoint: kEndpointCheck,
                   q: input,
                 );
                 _setFeedbackList(feedbackList);
@@ -339,21 +403,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCorrectMark() {
+  Widget _buildSuggestionWarning() {
     return AnimatedOpacity(
-      opacity: _loading ? 0 : 1,
-      duration: _animDuration,
-      child: Visibility(
-        visible: !(_loading || _isError || _feedbackList == null),
-        child: _buildTooltip(
-          IconButton(
-            icon: Image.asset(
-              "assets/images/ic_warning.png",
-              width: 15,
-              height: 15,
-            ),
-            onPressed: () {},
+      opacity:  !(_loading || _isError || _feedbackList == null) ? 1 : 0,
+      duration: _kAnimationDuration,
+      child: _buildTooltip(
+        IconButton(
+          icon: Image.asset(
+            "assets/images/ic_warning.png",
+            width: 15,
+            height: 15,
           ),
+          onPressed: () {
+            _toggleSuggestions();
+          },
         ),
       ),
     );
@@ -361,8 +424,70 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTooltip(Widget child) {
     return Tooltip(
-      message: kTooltip,
+      message: widget._tooltip,
       child: child,
+    );
+  }
+
+  Widget _buildTypeSuggestions() {
+    return AnimatedOpacity(
+      duration: _kAnimationDuration,
+      curve: Curves.easeOutSine,
+      opacity: _showSuggestions ? 1 : 0,
+      child: AnimatedContainer(
+        duration: _kAnimationDuration,
+        curve: Curves.easeOutSine,
+        margin: EdgeInsets.symmetric(horizontal: _showSuggestions ? 32 : 0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            _buildTypeSuggestion(
+              const CheckFeedback(type: CheckType.hateSpeech, score: 0),
+              CheckType.hateSpeech == _suggestion?.type,
+            ),
+            const SizedBox(
+              width: 5,
+            ),
+            _buildTypeSuggestion(
+              const CheckFeedback(type: CheckType.offensiveLanguage, score: 0),
+              CheckType.offensiveLanguage == _suggestion?.type,
+            ),
+            const SizedBox(
+              width: 5,
+            ),
+            _buildTypeSuggestion(
+              const CheckFeedback(type: CheckType.neither, score: 0),
+              CheckType.neither == _suggestion?.type,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeSuggestion(fbs.CheckFeedback checkFeedback, bool checked) {
+    return ActionChip(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      label: Text(
+        checkFeedback.label,
+        style: Theme.of(context).textTheme.caption.copyWith(
+              color: checked ? Colors.indigo : Colors.white,
+            ),
+      ),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(20),
+          ),
+          side: BorderSide(
+            color: Colors.indigo,
+            width: 1,
+          )),
+      shadowColor: Colors.transparent,
+      backgroundColor: checked ? Colors.white : Colors.indigo,
+      onPressed: () {
+        _setSuggestion(checkFeedback);
+      },
     );
   }
 }
