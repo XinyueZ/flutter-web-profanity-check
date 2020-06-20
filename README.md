@@ -140,9 +140,9 @@ Output
 # Plugin used
 
 - async: ^2.4.1
-- charts_flutter: ^0.9.0
 - collection: ^1.14.12
 - dio: ^3.0.9
+- fl_chart: ^0.10.0
 - google_fonts: ^1.1.0
 - package_info: ^0.4.1
 - url_launcher: ^5.4.10

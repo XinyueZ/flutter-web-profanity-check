@@ -1,5 +1,6 @@
 import 'package:async/async.dart';
 import 'package:collection/collection.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_web_profanity_check/consts.dart';
 import 'package:flutter_web_profanity_check/feedback.dart' as fbs;
 import 'package:flutter_web_profanity_check/feedback.dart';
+import 'package:flutter_web_profanity_check/indicator.dart';
 import 'package:flutter_web_profanity_check/net.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info/package_info.dart';
@@ -105,6 +107,9 @@ class _HomePageState extends State<HomePage> {
   bool get _isError =>
       _feedbackList?.length == 1 && _feedbackList.first is fbs.QueryError;
 
+  bool get _isCompleted =>
+      !(_loading || _isError || _feedbackList == null) && _pos != null;
+
   void _setFeedbackList(Iterable<fbs.Feedback> feedbackList) {
     setState(() {
       _feedbackList = feedbackList;
@@ -169,31 +174,27 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   _buildLogo(),
+                  _buildSupportedLanguage(),
                   const SizedBox(
                     height: 30,
                   ),
                   _buildInput(),
                   _buildSubmitAndClear(),
-                  const SizedBox(
-                    height: 15,
-                  ),
                   _buildOutput(),
-                  const SizedBox(
-                    height: 15,
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      _buildTypeSuggestions(),
-                      _buildSuggestionWarning(),
-                    ],
-                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSupportedLanguage() {
+    return Image.asset(
+      "assets/images/ic_uk.png",
+      width: 25,
+      height: 25,
     );
   }
 
@@ -294,43 +295,95 @@ class _HomePageState extends State<HomePage> {
         duration: _kAnimationDuration,
         curve: Curves.easeOutSine,
         height: _isError || _feedbackList == null ? 0 : null,
-        child: _buildScoreBars(),
+        child: _buildScores(),
       ),
     );
   }
 
-  Widget _buildScoreBars() {
+  Widget _buildScores() {
     if (_isError || _feedbackList == null) {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: _feedbackList.map((fbs.Feedback feedback) {
-            final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
-            return Stack(
-              alignment: AlignmentDirectional.center,
-              children: <Widget>[
-                LinearProgressIndicator(
-                  value: (feedback as fbs.CheckFeedback).score,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    cfb.color,
-                  ),
-                  minHeight: 20,
-                ),
-                Text(
-                  cfb.label,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.getFont('Source Code Pro').copyWith(
-                    fontSize: 13,
-                    color: Colors.teal,
-                  ),
-                ),
-              ],
-            );
-          })?.toList() ??
-          <Widget>[],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 18.0),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(18.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  _buildTypeSuggestions(),
+                  _buildSuggestionWarning(),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _buildLabels(),
+                  _buildChart(),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabels() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 150, minHeight: 150),
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: _feedbackList.map((fbs.Feedback feedback) {
+          final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
+          return Indicator(
+            color: cfb.color,
+            text: cfb.label,
+            isSquare: false,
+            size: 18,
+            textColor: Colors.teal,
+          );
+        })?.toList(),
+      ),
+    );
+  }
+
+  Widget _buildChart() {
+    return PieChart(
+      PieChartData(
+        borderData: FlBorderData(
+          show: false,
+        ),
+        startDegreeOffset: 180,
+        sectionsSpace: 0,
+        centerSpaceRadius: 0,
+        sections:
+            _feedbackList.map<PieChartSectionData>((fbs.Feedback feedback) {
+          final fbs.CheckFeedback cfb = feedback as fbs.CheckFeedback;
+          return PieChartSectionData(
+            value: cfb.score,
+            color: cfb.color,
+            title: '',
+            showTitle: false,
+            radius: 200,
+            titleStyle: GoogleFonts.getFont('Source Code Pro').copyWith(
+              fontSize: 13,
+              color: Colors.teal,
+            ),
+          );
+        })?.toList(),
+      ),
     );
   }
 
@@ -429,9 +482,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  bool get _isCompleted =>
-      !(_loading || _isError || _feedbackList == null) && _pos != null;
-
   Widget _buildSuggestionWarning() {
     return AnimatedOpacity(
       opacity: _isCompleted ? 1 : 0,
@@ -448,11 +498,7 @@ class _HomePageState extends State<HomePage> {
               width: 15,
               height: 15,
             ),
-            onPressed: _isCompleted
-                ? () {
-                    _toggleSuggestions();
-                  }
-                : null,
+            onPressed: _isCompleted ? () => _toggleSuggestions() : null,
           ),
         ),
       ),
