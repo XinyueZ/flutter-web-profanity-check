@@ -7,7 +7,7 @@ class WebVersionInfo {
 
 const String kAppTitle = "Profanity Check";
 const String kHomeLogo = "Profanity Check";
-const String kSubmitLabel = "Lucky Try!";
+const String kSubmitLabel = "Check";
 const String kInputHint = "Write some words here...";
 const String kQueryError = "Something went wrong, try again please!";
 const String kClear = "Clear";
